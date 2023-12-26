@@ -4,6 +4,7 @@ class Motor {
     private:
         int pin;
         int time;
+        bool auto_program_execution;
     public:
         Motor(int activationPin) {
             pin = activationPin;
@@ -30,5 +31,13 @@ class Motor {
 
         int getTime() {
             return time;
+        }
+
+        bool isAuto() {
+            return auto_program_execution;
+        }
+
+        void setAuto(bool auto_execution) {
+            auto_program_execution = auto_execution;
         }
 };
