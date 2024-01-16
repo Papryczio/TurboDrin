@@ -70,12 +70,12 @@ void parseRequest(String json)
 }
 
 /**
- * The function `resolveRequest` processes a JSON request and performs actions based on the specified
- * action type.
- *
+ * The function `resolveRequest` handles requests to start or abort an auto program, checking for
+ * conditions such as glass detection and whether another program is already running.
+ * 
  * @param jsonDocument The `jsonDocument` parameter is a `StaticJsonDocument` object that contains the
- * JSON data received from an external source. It is used to extract information about the requested
- * action and the values for the liquid quantities.
+ * JSON data received from an external source. It has a capacity of 256 bytes, which means it can store
+ * JSON data up to that size. The JSON data is expected to have certain fields, such as "Action
  */
 void resolveRequest(StaticJsonDocument<256> jsonDocument)
 {
@@ -83,19 +83,30 @@ void resolveRequest(StaticJsonDocument<256> jsonDocument)
     {
         Serial.println("ACTION:START_AUTO_PROGRAM");
 
-        // Motor#1
-        int liquid_1 = jsonDocument["Liquid_1"];
-        double time_1 = calculateTime(liquid_1);
-        Serial.println("Motor#1 -- liquid:" + (String)liquid_1 + ", time:" + (String)time_1);
-        SwitchOnMotor_1(time_1);
+        if (glassDetected && !motor_1.isActive() && !motor_2.isActive())
+        {
+            int liquid_1 = jsonDocument["Liquid_1"];
+            double time_1 = calculateTime(liquid_1);
+            Serial.println("Motor#1 -- liquid:" + (String)liquid_1 + ", time:" + (String)time_1);
+            SwitchOnMotor_1(time_1);
 
-        // Motor#2
-        int liquid_2 = jsonDocument["Liquid_2"];
-        double time_2 = calculateTime(liquid_2);
-        Serial.println("Motor#2 -- liquid:" + (String)liquid_2 + ", time:" + (String)time_2);
-        SwitchOnMotor_2(time_2);
+            int liquid_2 = jsonDocument["Liquid_2"];
+            double time_2 = calculateTime(liquid_2);
+            Serial.println("Motor#2 -- liquid:" + (String)liquid_2 + ", time:" + (String)time_2);
+            SwitchOnMotor_2(time_2);
 
-        requestResponse("START_AUTO_PROGRAM_SUCCESS", time_1, time_2);
+            requestResponse("START_AUTO_PROGRAM_SUCCESS", time_1, time_2);
+        }
+        else if (!glassDetected)
+        {
+            Serial.println("ACTION:START_AUTO_PROGRAM -- FAILURE: Glass not detected.");
+            requestResponse("START_AUTO_PROGRAM_FAILURE", "GLASS_NOT_DETECTED");
+        }
+        else
+        {
+            Serial.println("ACTION:START_AUTO_PROGRAM -- FAILURE: Another program already running.");
+            requestResponse("START_AUTO_PROGRAM_FAILURE", "PROGRAM_RUNNING");
+        }
     }
     else if (jsonDocument["Action"] == "ABORT_AUTO_PROGRAM")
     {
@@ -140,6 +151,13 @@ void requestResponse(String action, double time_1, double time_2)
     serializeJson(doc, SerialBT);
 }
 
+/**
+ * The function takes an action as input, creates a JSON document with the action, and then serializes
+ * and outputs the JSON document to both the Serial and SerialBT streams.
+ * 
+ * @param action The "action" parameter is a string that represents the action being requested. It
+ * could be any valid action that the program needs to perform.
+ */
 void requestResponse(String action)
 {
     DynamicJsonDocument doc(256);
@@ -149,10 +167,35 @@ void requestResponse(String action)
     serializeJson(doc, SerialBT);
 }
 
+/**
+ * The function takes an action and a message as input, creates a JSON document with the action and
+ * message, and then serializes and sends the JSON document over both the Serial and SerialBT
+ * connections.
+ * 
+ * @param action The "action" parameter is a string that represents the action being requested. It
+ * could be any action that the code needs to perform or communicate to another device or system.
+ * @param message The "message" parameter is a string that represents the message you want to send as
+ * part of the request response. It can be any text or information that you want to include in the
+ * response.
+ */
+void requestResponse(String action, String message)
+{
+    DynamicJsonDocument doc(256);
+    doc["Action"] = action;
+    doc["Message"] = message;
+
+    serializeJson(doc, Serial);
+    serializeJson(doc, SerialBT);
+}
+
 // =============
 // Motor control
 // =============
 
+/**
+ * The function `motor_1_switch()` turns off motor 1, clears a timer, and sets the motor's auto mode to
+ * 0.
+ */
 void IRAM_ATTR motor_1_switch()
 {
     motor_1.switchOff();
@@ -160,6 +203,13 @@ void IRAM_ATTR motor_1_switch()
     motor_1.setAuto(0);
 }
 
+/**
+ * The function "SwitchOnMotor_1" switches on Motor#1 and sets it to automatic mode for a specified
+ * duration of time.
+ * 
+ * @param time The "time" parameter is the duration in seconds for which the motor should be switched
+ * on.
+ */
 void SwitchOnMotor_1(double time)
 {
     My_timer_1 = timerBegin(0, 80, true);
@@ -173,7 +223,9 @@ void SwitchOnMotor_1(double time)
     Serial.println("Motor#1 switched on");
 }
 
-// Motor#2 control
+/**
+ * The function `motor_2_switch()` turns off motor 2, clears a timer, and sets the auto mode to 0.
+ */
 void IRAM_ATTR motor_2_switch()
 {
     motor_2.switchOff();
@@ -181,6 +233,13 @@ void IRAM_ATTR motor_2_switch()
     motor_2.setAuto(0);
 }
 
+/**
+ * The function "SwitchOnMotor_2" switches on motor 2 and sets it to automatic mode for a specified
+ * duration of time.
+ * 
+ * @param time The "time" parameter is the duration for which the motor should be switched on,
+ * specified in seconds.
+ */
 void SwitchOnMotor_2(double time)
 {
     My_timer_2 = timerBegin(1, 80, true);

@@ -1,5 +1,10 @@
-#define MOTOR_1 25
-#define MOTOR_2 26
+// NodeMCU
+// #define MOTOR_1 25
+// #define MOTOR_2 26
+
+// Wemos Lolin32
+#define MOTOR_1 14
+#define MOTOR_2 12
 
 #include "Arduino.h"
 #include "BluetoothSerial.h"
