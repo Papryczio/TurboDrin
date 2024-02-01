@@ -1,5 +1,7 @@
 #include "main.h"
 
+double lastGlassWeight = 0;
+
 void setup()
 {
     Serial.setRxBufferSize(512);
@@ -18,7 +20,13 @@ void loop()
 {
     String message = readBTline();
     parseRequest(message);
-    Serial.println("Glass weight: " + (String)glassWeight + " detected: " + (String)glassDetected);
+    if (glassWeight != lastGlassWeight) {
+        Serial.println(glassWeight);
+        lastGlassWeight = glassWeight;
+    }
+    if (glassWeight < -5) {
+        scale.tare();
+    }
 }
 
 /**
@@ -85,15 +93,19 @@ void resolveRequest(StaticJsonDocument<256> jsonDocument)
 
         if (glassDetected && !motor_1.isActive() && !motor_2.isActive())
         {
+            Serial.println("ACTION:START_AUTO_PROGRAM -- SUCCESS");
+
             int liquid_1 = jsonDocument["Liquid_1"];
             double time_1 = calculateTime(liquid_1);
-            Serial.println("Motor#1 -- liquid:" + (String)liquid_1 + ", time:" + (String)time_1);
-            SwitchOnMotor_1(time_1);
-
+            
             int liquid_2 = jsonDocument["Liquid_2"];
             double time_2 = calculateTime(liquid_2);
+
+            Serial.println("Motor#1 -- liquid:" + (String)liquid_1 + ", time:" + (String)time_1);
+            if ((int)liquid_1 != 0) SwitchOnMotor_1(time_1);
+
             Serial.println("Motor#2 -- liquid:" + (String)liquid_2 + ", time:" + (String)time_2);
-            SwitchOnMotor_2(time_2);
+            if ((int)liquid_2 != 0) SwitchOnMotor_2(time_2);
 
             requestResponse("START_AUTO_PROGRAM_SUCCESS", time_1, time_2);
         }
@@ -105,6 +117,14 @@ void resolveRequest(StaticJsonDocument<256> jsonDocument)
         else
         {
             Serial.println("ACTION:START_AUTO_PROGRAM -- FAILURE: Another program already running.");
+
+            if (motor_1.isActive()) {
+                Serial.println("Motor#1 active");
+            }
+            if (motor_2.isActive()) {
+                Serial.println("Motor#2 active");
+            }
+
             requestResponse("START_AUTO_PROGRAM_FAILURE", "PROGRAM_RUNNING");
         }
     }
@@ -125,6 +145,104 @@ void resolveRequest(StaticJsonDocument<256> jsonDocument)
         }
 
         requestResponse("ABORT_AUTO_PROGRAM_SUCCESS");
+    }
+    else if (jsonDocument["Action"] == "START_MOTOR1") {
+        if (glassDetected) {
+            Serial.println("ACTION:START_MOTOR1 -- SUCCESS");
+
+            motor_1.switchOn();
+            if (motor_1.isAuto())
+            {
+                clearTimer(My_timer_1);
+            }
+            requestResponse("START_MOTOR1_SUCCESS");
+        }
+        else {
+            Serial.println("ACTION:START_MOTOR1 -- FAILURE: Glass not detected.");
+            requestResponse("START_MOTOR1_FAILURE", "GLASS_NOT_DETECTED");
+        }
+    }
+    else if (jsonDocument["Action"] == "KILL_MOTOR1") {
+        Serial.println("ACTION:KILL_MOTOR1 -- SUCCESS");
+
+        motor_1.switchOff();
+
+        if (motor_1.isAuto())
+        {
+            clearTimer(My_timer_1);
+        }
+
+        requestResponse("KILL_MOTOR1_SUCCESS");
+    }
+    else if (jsonDocument["Action"] == "START_MOTOR2") {
+        if (glassDetected) {
+            Serial.println("ACTION:START_MOTOR2 -- SUCCESS");
+
+            motor_2.switchOn();
+
+            if (motor_2.isAuto())
+            {
+                clearTimer(My_timer_2);
+            }
+
+            requestResponse("START_MOTOR2_SUCCESS");
+        }
+        else {
+            Serial.println("ACTION:START_MOTOR2 -- FAILURE: Glass not detected.");
+            requestResponse("START_MOTOR2_FAILURE", "GLASS_NOT_DETECTED");
+        }
+    }
+    else if (jsonDocument["Action"] == "KILL_MOTOR2") {
+        Serial.println("ACTION:KILL_MOTOR2 -- SUCCESS");
+
+        motor_2.switchOff();
+
+        if (motor_2.isAuto())
+        {
+            clearTimer(My_timer_2);
+        }
+
+        requestResponse("KILL_MOTOR2_SUCCESS");
+    }
+    else if (jsonDocument["Action"] == "START_MOTOR12") {
+        if (glassDetected) {
+            Serial.println("ACTION:START_MOTOR12 -- SUCCESS");
+
+            motor_1.switchOn();
+            motor_2.switchOn();
+
+            if (motor_1.isAuto())
+            {
+                clearTimer(My_timer_1);
+            }
+            if (motor_2.isAuto())
+            {
+                clearTimer(My_timer_2);
+            }
+
+            requestResponse("START_MOTOR12_SUCCESS");
+        }
+        else {
+            Serial.println("ACTION:START_MOTOR12 -- FAILURE: Glass not detected.");
+            requestResponse("START_MOTOR12_FAILURE", "GLASS_NOT_DETECTED");
+        }
+    }
+    else if (jsonDocument["Action"] == "KILL_MOTOR12") {
+        Serial.println("ACTION:KILL_MOTOR12 -- SUCCESS");
+
+        motor_1.switchOff();
+        motor_2.switchOff();
+
+        if (motor_1.isAuto())
+        {
+            clearTimer(My_timer_1);
+        }
+        if (motor_2.isAuto())
+        {
+            clearTimer(My_timer_2);
+        }
+
+        requestResponse("KILL_MOTOR12_SUCCESS");
     }
 }
 

@@ -1,7 +1,7 @@
 #include "Arduino.h"
 
 // Calibrate based on pump efficiency -- in case when source current is too low to handle both pumps working at it's full speed uncomment separate scalings.
-#define TIME_SCALE 0.2
+#define TIME_SCALE 0.4643
 // #define TIME_SCALE_1 0.02
 // #define TIME_SCALE_2 0.03
 

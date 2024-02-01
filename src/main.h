@@ -3,8 +3,8 @@
 // #define MOTOR_2 26
 
 // Wemos Lolin32
-#define MOTOR_1 14
-#define MOTOR_2 12
+#define MOTOR_1 26
+#define MOTOR_2 27
 
 #include "Arduino.h"
 #include "BluetoothSerial.h"
@@ -42,3 +42,4 @@ void parseRequest(String json);
 void resolveRequest(StaticJsonDocument<256> jsonDocument);
 void requestResponse(String action, double time_1, double time_2);
 void requestResponse(String action);
+void requestResponse(String action, String message);

@@ -14,7 +14,7 @@ class Motor {
         }
 
         bool isActive() {
-            return digitalRead(pin);
+            return !digitalRead(pin);
         }
 
         void switchOn() {

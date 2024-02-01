@@ -1,7 +1,7 @@
 #include "Arduino.h"
 #include "HX711.h"
 
-#define CALIBRATION_FACTOR -4500
+#define CALIBRATION_FACTOR 50000
 
 // NodeMCU
 // const int LOADCELL_DOUT_PIN = 22;
